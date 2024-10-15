@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT WebSocket Client</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+    
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 20px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Wake On LAN</h1>
+        <input type="text" id="messageInput" placeholder="...">
+        <button onclick="sendMessage()">Send</button>
+        <div id="messages" class="error"></div>
+    </div>
+
+    <script>
+        var wsbroker = "test.mosquitto.org";  // Broker MQTT con WebSocket
+        var wsport = 8081; // Puerto habilitado para WebSocket
+
+        var client = new Paho.MQTT.Client(wsbroker, wsport, "clientId_" + parseInt(Math.random() * 100, 10));
+
+        client.onConnectionLost = function(responseObject) {
+            console.log("onConnectionLost: " + responseObject.errorMessage);
+        };
+
+        client.onMessageArrived = function(message) {
+            console.log("Message Arrived: " + message.payloadString);
+        };
+
+        function onSuccess() {
+            console.log("Connected to MQTT broker");
+        }
+
+        function onFailure(message) {
+            console.log("Connection failed: " + message.errorMessage);
+        }
+
+        var options = {
+            timeout: 3,
+            onSuccess: onSuccess,
+            onFailure: onFailure
+        };
+
+        function connectToBroker() {
+            console.log("Attempting connection...");
+            client.connect(options);
+        }
+
+        // Conectar al broker cuando se cargue la página
+        window.onload = connectToBroker;
+
+        function sendMessage() {
+            var messageInput = document.getElementById("messageInput");
+            var messageText = messageInput.value.trim();
+            var messagesDiv = document.getElementById("messages");
+
+            // Validar el mensaje
+            if (messageText === "" || messageText.length < 3) {
+                messagesDiv.textContent = "El mensaje debe tener al menos 3 caracteres.";
+                return;
+            } else {
+                messagesDiv.textContent = ""; // Limpiar mensajes de error previos
+            }
+
+            // Crear y enviar el mensaje al topic "emprendia"
+            var message = new Paho.MQTT.Message(messageText);
+            message.destinationName = "emprendia";
+            client.send(message);
+            console.log("Message sent: " + messageText);
+
+            // Limpiar el campo de texto
+            messageInput.value = "";
+        }
+    </script>
+</body>
+</html>
