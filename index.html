@@ -24,6 +24,7 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            width: 50%;
         }
 
         h1 {
@@ -58,6 +59,18 @@
             color: red;
             margin-top: 10px;
         }
+
+        .log {
+            text-align: left;
+            margin-top: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 200px;
+            overflow-y: scroll;
+            font-family: monospace;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -66,43 +79,52 @@
         <input type="text" id="messageInput" placeholder="...">
         <button onclick="sendMessage()">Send</button>
         <div id="messages" class="error"></div>
+        <div class="log" id="log"></div>
     </div>
 
     <script>
-        var wsbroker = "test.mosquitto.org";  // Broker MQTT con WebSocket
-        var wsport = 8081; // Puerto habilitado para WebSocket
+        var wsbroker = "test.mosquitto.org";
+        var wsport = 8081;
 
         var client = new Paho.MQTT.Client(wsbroker, wsport, "clientId_" + parseInt(Math.random() * 100, 10));
 
         client.onConnectionLost = function(responseObject) {
-            console.log("onConnectionLost: " + responseObject.errorMessage);
+            logMessage("Connection lost: " + responseObject.errorMessage);
+            reconnectToBroker();
         };
 
         client.onMessageArrived = function(message) {
-            console.log("Message Arrived: " + message.payloadString);
+            logMessage("Message arrived: " + message.payloadString);
         };
 
         function onSuccess() {
-            console.log("Connected to MQTT broker");
+            logMessage("Connected to MQTT broker");
         }
 
         function onFailure(message) {
-            console.log("Connection failed: " + message.errorMessage);
+            logMessage("Connection failed: " + message.errorMessage);
         }
 
-        var options = {
-            timeout: 3,
-            useSSL: true,
-            onSuccess: onSuccess,
-            onFailure: onFailure
-        };
+        function getOptions() {
+            return {
+                timeout: 3,
+                useSSL: true,
+                onSuccess: onSuccess,
+                onFailure: onFailure
+            };
+        }
 
         function connectToBroker() {
-            console.log("Attempting connection...");
+            logMessage("Attempting connection...");
+            var options = getOptions();
             client.connect(options);
         }
 
-        // Conectar al broker cuando se cargue la página
+        function reconnectToBroker() {
+            logMessage("Attempting to reconnect in 2 seconds...");
+            setTimeout(connectToBroker, 2000);
+        }
+
         window.onload = connectToBroker;
 
         function sendMessage() {
@@ -110,22 +132,25 @@
             var messageText = messageInput.value.trim();
             var messagesDiv = document.getElementById("messages");
 
-            // Validar el mensaje
             if (messageText === "" || messageText.length < 3) {
                 messagesDiv.textContent = "El mensaje debe tener al menos 3 caracteres.";
                 return;
             } else {
-                messagesDiv.textContent = ""; // Limpiar mensajes de error previos
+                messagesDiv.textContent = "";
             }
 
-            // Crear y enviar el mensaje al topic "emprendia"
             var message = new Paho.MQTT.Message(messageText);
             message.destinationName = "emprendia";
             client.send(message);
-            console.log("Message sent: " + messageText);
+            logMessage("Message sent: " + messageText);
 
-            // Limpiar el campo de texto
             messageInput.value = "";
+        }
+
+        function logMessage(message) {
+            var logDiv = document.getElementById("log");
+            logDiv.innerHTML += message + "<br>";
+            logDiv.scrollTop = logDiv.scrollHeight;
         }
     </script>
 </body>
